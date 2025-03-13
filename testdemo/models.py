@@ -1,0 +1,53 @@
+from django.db import models
+
+class CustomUser(models.Model):
+    username = models.CharField(max_length=150, unique=True)
+    password = models.CharField(max_length=255)
+    role = models.CharField(max_length=20, choices=[
+        ('operator', 'Operator'),
+        ('admin', 'Admin'),
+        ('maintenance', 'Maintenance'),
+    ], default='operator')
+
+    def __str__(self):
+        return self.username
+
+# 图片模型
+class Image(models.Model):
+    image_name = models.CharField(max_length=255)
+    batch_number = models.CharField(max_length=100)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    image_file = models.ImageField(upload_to='images/')  # 保存图片文件的路径
+
+    def __str__(self):
+        return self.image_name
+
+# 设备模型
+class Device(models.Model):
+    device_name = models.CharField(max_length=255)
+    model_name = models.CharField(max_length=255)
+    image = models.ForeignKey(Image, related_name='devices', on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.device_name
+
+# 处理结果模型
+class ProcessingResult(models.Model):
+    RESULT_CHOICES = [
+        ('no_problem', 'No Problem'),
+        ('problem', 'Problem'),
+    ]
+
+    APPROVAL_CHOICES = [
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+
+    image = models.OneToOneField(Image, related_name='processing_result', on_delete=models.CASCADE)
+    result = models.CharField(max_length=20, choices=RESULT_CHOICES)
+    approval_result = models.CharField(max_length=20, choices=APPROVAL_CHOICES)
+    operator = models.ForeignKey('CustomUser', on_delete=models.SET_NULL, null=True, blank=True)
+
+    def __str__(self):
+        return f"Processing Result for {self.image.image_name}"
+

@@ -1,0 +1,4 @@
+.idea
+testdemo/migrations/*.py
+db.sqlite3
+1.txt

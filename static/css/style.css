@@ -1,0 +1,155 @@
+@import url('https://fonts.googleapis.com/css?family=Poppins:100,200,300,400,500,600,70,800,900');
+body {
+	margin: 0;
+	padding: 0;
+	height: 100vh;
+	background-size: cover;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	font-family: "Poppins", sans-serif;
+  }
+.container {
+	margin: 0;
+	padding: 0;
+	height: 100vh;
+	background-size: cover;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	font-family: "Poppins", sans-serif;
+}
+
+.error-message-container {
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 4px;
+    color: #721c24;
+    display: none;
+    position: absolute;  /* Positioned outside the card */
+    top: 10%;  /* Space from the top */
+    left: 50%;
+    transform: translateX(-50%);  /* Centered horizontally */
+    z-index: 10;
+    text-align: center;
+}
+
+.card {
+    background: rgba(143, 209, 251, 0.82);
+    border-radius: 15px;
+    padding: 30px;
+    height: 60%;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
+    color: rgb(81, 68, 68);
+    text-align: center;
+    position: relative;
+    z-index: 10;
+    animation: float 3s ease-in-out infinite;
+    padding-top: 50px; /* Create space for the error message */
+}
+
+
+.login-container{
+	height: 100vh;
+	width: 100%;
+}
+
+.login-form{
+	margin: auto;
+	width: 370px;
+	padding: 15px;
+	max-width: 100%;
+}
+
+.login-form .form-control{
+	font-size: 15px;
+	min-height: 48px;
+}
+
+.login-form a{
+	text-decoration: none;
+	color: #666;
+}
+
+.login-form a:hover{
+	color: #1b09bd;
+}
+
+.forget-link{
+	font-size: 13px;
+}
+
+.form-control:focus{
+	border-color: #1b09bd;
+	box-shadow: 0 0 0 0.2em rgba(114, 61, 190, 0.25);
+}
+
+.btn-custom{
+	background: #1b09bd;
+	border-color: #1b09bd;
+	color: #fff;
+	font-size: 15px;
+	font-weight: 600;
+	min-height: 48px;
+}
+
+.btn-custom:focus,
+.btn-custom:hover,
+.btn-custom:active,
+.btn-custom:active:focus{
+	background: #0a54ea;
+	border-color: #0a54ea;
+	color: #fff;
+}
+
+.btn-custom:focus{
+	box-shadow: 0 0 0 0.2em rgba(4, 83, 230, 0.5);
+}
+
+.d-none {
+	display: none!important;
+}
+
+/* 动画效果使卡片有漂浮感 */
+@keyframes float {
+	0% {
+		transform: translateY(0);
+	}
+	50% {
+		transform: translateY(-15px);
+	}
+	100% {
+		transform: translateY(0);
+	}
+}
+
+.form-group label {
+    font-size: 16px;
+    font-weight: bold;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 10px;
+    border-radius: 25px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+}
+.form-group select {
+    width: 100%;
+    padding: 10px;
+    border-radius: 25px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}

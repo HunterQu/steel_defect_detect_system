@@ -1,0 +1,134 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{% static 'css/home.css' %}">
+    <title>主页</title>
+</head>
+<body>
+    {% if user.is_authenticated %}
+        <!-- 导航栏 -->
+        <nav>
+            <div class="nav-item" onclick="switchTab('manage')">管理</div>
+            <div class="nav-item" onclick="switchTab('statistics')">统计</div>
+            <div class="nav-item" onclick="switchTab('other1')">Other 1</div>
+            <div class="nav-item" onclick="switchTab('other2')">Other 2</div>
+        </nav>
+    
+        <!-- 页面主体内容 -->
+        <div class="container">
+            <div class="card-main" id="manage">
+                <!-- 列出设备列表 -->
+                <div class="card card-A">
+                    <h2>设备列表</h2>
+                    <ul id="device-list">
+                        <!-- 动态加载设备列表 -->
+                    </ul>
+                </div>
+
+                <!-- 选中设备后显示设备信息，提供模型选择功能 -->
+                <div class="card card-B" id="device-info">
+                    <h2>设备信息</h2>
+                    <p id="device-name"></p>
+                    <p id="device-model"></p>
+                    <div id="model-selection">
+                        <label for="model-choice">选择模型:</label>
+                        <select id="model-choice">
+                            <option value="model1">模型1</option>
+                            <option value="model2">模型2</option>
+                        </select>
+                        <button id="submit-model" onclick="submitModel()">提交模型</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-main" id="statistics"></div>
+            <div class="card-main" id="other1"></div>
+            <div class="card-main" id="other2"></div>
+        </div>
+    {% endif %}
+
+    <script>
+        function switchTab(tabName) {
+            const allContainers = document.querySelectorAll('.card-main');
+            allContainers.forEach(container => {
+                container.style.display = 'none';
+            });
+
+            const activeContainer = document.getElementById(tabName);
+            activeContainer.style.display = 'flex';
+        }
+
+        function loadDevices() {
+            fetch('/api/devices/')  // 调用后端API来加载设备列表
+                .then(response => response.json())
+                .then(devices => {
+                    const deviceListElement = document.getElementById('device-list');
+                    devices.forEach(device => {
+                        const deviceElement = document.createElement('li');
+                        deviceElement.textContent = device.device_name;
+                        deviceElement.onclick = () => loadDeviceInfo(device.id);  // 点击设备时加载信息
+                        deviceListElement.appendChild(deviceElement);
+                    });
+                });
+        }
+
+        function loadDeviceInfo(deviceId) {
+            fetch(`/api/devices/${deviceId}/`)  // 获取单个设备的详细信息
+                .then(response => response.json())
+                .then(device => {
+                    document.getElementById('device-name').textContent = `设备名称: ${device.device_name}`;
+                    document.getElementById('device-model').textContent = `设备模型: ${device.model_name}`;
+                });
+        }
+        
+        function submitModel() {
+            const deviceId = document.getElementById('submit-model').getAttribute('data-device-id');
+            const selectedModel = document.getElementById('model-choice').value;
+
+            fetch(`/api/devices/${deviceId}/update_model/`, {  // 提交更新的模型
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),  // 确保提交 CSRF Token（Django 默认使用）
+                },
+                body: JSON.stringify({
+                    model_name: selectedModel
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('设备模型更新成功！');
+                    loadDeviceInfo(deviceId);  // 更新成功后重新加载设备信息
+                } else {
+                    alert('更新失败，请重试。');
+                }
+            });
+        }
+        
+        // 获取 CSRF Token 用于 POST 请求
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        window.onload = function() {
+            switchTab('manage');
+            loadDevices();  // 页面加载时先加载设备列表
+        };
+    </script>
+</body>
+</html>
