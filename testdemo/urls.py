@@ -15,6 +15,9 @@ urlpatterns = [
     path('api/devices/<int:device_id>/', views.device_detail, name='device_detail'),
     path('api/devices/<int:device_id>/update_model/', views.update_device_model, name='update_device_model'),
 
+    path('api/processing_results/problem/', views.get_images_for_audit, name='get_images_for_audit'),
+    path('api/processing_results/<int:image_id>/update_approval/', views.update_approval_result, name='update_approval_result'),
+
     # 其他路由
     path('/ajax_login/', views.ajax_login, name='ajax_login'),
     path('/ajax_register/', views.ajax_register, name='ajax_register'),

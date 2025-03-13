@@ -22,6 +22,7 @@
                 <!-- 列出设备列表 -->
                 <div class="card card-A">
                     <h2>设备列表</h2>
+                    <input type="text" id="search-input" placeholder="搜索设备..." onkeyup="searchDevices()">
                     <ul id="device-list">
                         <!-- 动态加载设备列表 -->
                     </ul>
@@ -42,7 +43,29 @@
                     </div>
                 </div>
             </div>
-            <div class="card-main" id="other1"></div>
+            <div class="card-main" id="other1">
+                <div class="card card-A">
+                    <h2>待审计图片列表</h2>
+                    <ul id="image-list">
+                        <!-- 动态加载待审计的图片 -->
+                    </ul>
+                </div>
+            
+                <!-- 选中图片后显示图片信息，提供审批功能 -->
+                <div class="card card-B" id="image-info">
+                    <h2>图片信息</h2>
+                    <img id="selected-image" src="" alt="Image Preview" style="max-width: 100%; max-height: 300px;">
+                    <p id="image-name"></p>
+                    <div id="approval-selection">
+                        <label for="approval-choice">选择审批结果:</label>
+                        <select id="approval-choice">
+                            <option value="approved">通过</option>
+                            <option value="rejected">不通过</option>
+                        </select>
+                        <button id="submit-approval" onclick="submitApproval()">提交审批结果</button>
+                    </div>
+                </div>
+            </div>
         </div>
     {% endif %}
 
@@ -121,9 +144,86 @@
             return cookieValue;
         }
 
+        // 搜索功能
+        function searchDevices() {
+            var input = document.getElementById('search-input');
+            var filter = input.value.toLowerCase();  // 获取搜索框的值并转换为小写
+            var ul = document.getElementById('device-list');
+            var li = ul.getElementsByTagName('li');  // 获取所有设备列表项
+        
+            // 遍历所有列表项
+            for (var i = 0; i < li.length; i++) {
+                var device = li[i];
+                var text = device.textContent || device.innerText;  // 获取列表项的文本内容
+        
+                // 如果列表项的文本内容包含搜索框的值，则显示该项；否则隐藏该项
+                if (text.toLowerCase().indexOf(filter) > -1) {
+                    device.style.display = '';  // 显示设备项
+                } else {
+                    device.style.display = 'none';  // 隐藏设备项
+                }
+            }
+        }
+        
+        // 加载待审计的图片列表（只显示有问题的图片）
+        function loadImagesForAudit() {
+            fetch('/api/processing_results/problem/')  // 获取有问题的图片处理结果
+                .then(response => response.json())
+                .then(images => {
+                    const imageListElement = document.getElementById('image-list');
+                    images.forEach(image => {
+                        const imageElement = document.createElement('li');
+                        imageElement.textContent = image.image_name;
+                        imageElement.onclick = () => loadImageInfo(image.id);  // 点击图片时加载信息
+                        imageListElement.appendChild(imageElement);
+                    });
+                });
+        }
+        
+        // 加载选中的图片信息
+        function loadImageInfo(imageId) {
+            fetch(`/api/images/${imageId}/`)  // 获取单个图片的详细信息
+                .then(response => response.json())
+                .then(image => {
+                    // 显示图片信息
+                    document.getElementById('selected-image').src = image.image_url; // 假设图片URL是image_url字段
+                    document.getElementById('image-name').textContent = `图片名称: ${image.image_name}`;
+        
+                    // 将选中的图片ID保存到提交按钮的data属性中
+                    document.getElementById('submit-approval').setAttribute('data-image-id', imageId);
+                });
+        }
+        
+        // 提交审批结果
+        function submitApproval() {
+            const imageId = document.getElementById('submit-approval').getAttribute('data-image-id');
+            const approvalResult = document.getElementById('approval-choice').value;
+        
+            fetch(`/api/processing_results/${imageId}/update_approval/`, {  // 提交审批结果
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),  // CSRF Token
+                },
+                body: JSON.stringify({
+                    approval_result: approvalResult
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('审批结果提交成功！');
+                    loadImageInfo(imageId);  // 更新成功后重新加载图片信息
+                } else {
+                    alert('提交失败，请重试。');
+                }
+            });
+        }
+
         window.onload = function() {
             switchTab('manage');
             loadDevices();  // 页面加载时先加载设备列表
+            loadImagesForAudit();  // 页面加载时加载待审计图片
         };
     </script>
 </body>

@@ -10,7 +10,7 @@ from django.views.decorators.http import require_http_methods
 from django.contrib.auth import get_user_model
 from django.shortcuts import reverse
 from demo import settings
-from testdemo.models import CustomUser, Device
+from testdemo.models import CustomUser, Device, ProcessingResult
 from django.contrib.auth.hashers import check_password
 from django.contrib.auth.hashers import make_password
 import json
@@ -164,3 +164,23 @@ def update_device_model(request, device_id):
         except Device.DoesNotExist:
             return JsonResponse({'error': 'Device not found'}, status=404)
     return JsonResponse({'error': 'Invalid method'}, status=405)
+
+# 获取所有处理结果为“有问题”的图片
+def get_images_for_audit(request):
+    problem_images = ProcessingResult.objects.filter(result='problem').values('image_id', 'image__image_name')
+    return JsonResponse(list(problem_images), safe=False)
+
+# 提交审批结果
+@csrf_exempt
+def update_approval_result(request, image_id):
+    if request.method == 'POST':
+        approval_result = request.POST.get('approval_result')
+        try:
+            processing_result = ProcessingResult.objects.get(image_id=image_id)
+            processing_result.approval_result = approval_result
+            processing_result.operator = request.user  # 假设操作员是当前用户
+            processing_result.save()
+            return JsonResponse({'success': True})
+        except ProcessingResult.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '处理结果未找到'})
+    return JsonResponse({'success': False, 'error': '无效的请求'})
