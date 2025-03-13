@@ -13,7 +13,9 @@
         <!-- 导航栏 -->
         <nav>
             <div class="nav-item" onclick="switchTab('manage')">管理</div>
+            <div class="nav-item" onclick="switchTab('statistics')">统计</div>
             <div class="nav-item" onclick="switchTab('other1')">审计</div>
+            <div class="nav-item" onclick="switchTab('database')">数据集</div>
         </nav>
     
         <!-- 页面主体内容 -->
@@ -42,7 +44,9 @@
                     </div>
                 </div>
             </div>
+            <div class="card-main" id="statistics"></div>
             <div class="card-main" id="other1"></div>
+            <div class="card-main" id="other2"></div>
         </div>
     {% endif %}
 

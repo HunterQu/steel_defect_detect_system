@@ -4,6 +4,10 @@ from . import views
 urlpatterns = [
     path('', views.index, name='index'),
     path('operator_dashboard/', views.operator_dashboard ,name='operator_dashboard'),
+    path('admin_dashboard/', views.operator_dashboard ,name='admin_dashboard'),
+    path('maintenance_dashboard/', views.operator_dashboard ,name='maintenance_dashboard'),
+
+
     path('upload_image/', views.upload_image, name='upload_image'),
     path('get_image/<str:image_name>/', views.get_image, name='get_image'),  # 获取图片URL接口
 

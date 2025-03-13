@@ -98,6 +98,16 @@ def operator_dashboard(request):
         return render(request, 'testdemo/operator_dashboard.html')
     return render(request, 'testdemo/index.html')
 
+def admin_dashboard(request):
+    if request.user.is_authenticated:
+        return render(request, 'testdemo/admin_dashboard.html')
+    return render(request, 'testdemo/index.html')
+
+def maintenance_dashboard(request):
+    if request.user.is_authenticated:
+        return render(request, 'testdemo/maintenance_dashboard.html')
+    return render(request, 'testdemo/index.html')
+
 def upload_image(request):
     if request.method == 'POST' and request.FILES['image']:
         uploaded_file = request.FILES['image']
