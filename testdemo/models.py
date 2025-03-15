@@ -1,4 +1,6 @@
 from django.db import models
+from django.utils import timezone
+
 
 class CustomUser(models.Model):
     username = models.CharField(max_length=150, unique=True)
@@ -27,9 +29,20 @@ class Device(models.Model):
     device_name = models.CharField(max_length=255)
     model_name = models.CharField(max_length=255)
     image = models.ForeignKey(Image, related_name='devices', on_delete=models.CASCADE)
+    total_runtime = models.DurationField(default=timezone.timedelta())  # 总运行时间
+    total_idle_time = models.DurationField(default=timezone.timedelta())  # 总空闲时间
 
     def __str__(self):
         return self.device_name
+
+class DeviceUsage(models.Model):
+    device = models.ForeignKey(Device, on_delete=models.CASCADE)
+    start_time = models.DateTimeField()
+    end_time = models.DateTimeField()
+    status = models.CharField(max_length=20, choices=[('running', 'Running'), ('idle', 'Idle')])
+
+    def __str__(self):
+        return f"Usage for {self.device.device_name} from {self.start_time} to {self.end_time}"
 
 # 处理结果模型
 class ProcessingResult(models.Model):
@@ -44,6 +57,7 @@ class ProcessingResult(models.Model):
     ]
 
     image = models.OneToOneField(Image, related_name='processing_result', on_delete=models.CASCADE)
+    timestamp = models.DateTimeField(auto_now_add=True)  # 时间戳
     result = models.CharField(max_length=20, choices=RESULT_CHOICES)
     approval_result = models.CharField(max_length=20, choices=APPROVAL_CHOICES)
     operator = models.ForeignKey('CustomUser', on_delete=models.SET_NULL, null=True, blank=True)
