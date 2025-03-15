@@ -175,10 +175,11 @@ def get_images_for_audit(request):
 def update_approval_result(request, image_id):
     if request.method == 'POST':
         approval_result = request.POST.get('approval_result')
+        user = CustomUser.objects.get(username=request.user.username)  # 获取当前登录的 CustomUser 对象
         try:
             processing_result = ProcessingResult.objects.get(image_id=image_id)
             processing_result.approval_result = approval_result
-            processing_result.operator = request.user  # 假设操作员是当前用户
+            processing_result.operator = user  # 假设操作员是当前用户
             processing_result.save()
             return JsonResponse({'success': True})
         except ProcessingResult.DoesNotExist:
