@@ -29,7 +29,6 @@ def ajax_login(request):
             'errors': {'__all__': ['用户名或密码错误']}
         })
 
-    # 认证通过后，我们使用自定义的 CustomUser 模型获取其他信息
     try:
         custom_user = CustomUser.objects.get(username=username)
     except CustomUser.DoesNotExist:
@@ -119,15 +118,12 @@ def upload_image(request):
 
 
 def get_image(request, image_name):
-    # 构建图片的路径
     image_path = os.path.join(settings.MEDIA_ROOT, 'uploads', image_name)
 
     if os.path.exists(image_path):
-        # 获取图片的URL
         image_url = os.path.join(settings.MEDIA_URL, 'uploads', image_name)
         return JsonResponse({'image_url': image_url})
 
-    # 如果文件不存在，返回错误信息
     return JsonResponse({'error': 'Image not found'}, status=404)
 
 # 获取设备列表
