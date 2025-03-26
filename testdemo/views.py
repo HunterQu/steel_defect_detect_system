@@ -15,6 +15,8 @@ from django.contrib.auth.hashers import check_password
 from django.contrib.auth.hashers import make_password
 import json
 
+from testdemo.utils import get_defect_and_quality_rate, get_device_utilization, get_employee_work_status
+
 
 def ajax_login(request):
     username = request.POST.get('username')
@@ -74,15 +76,12 @@ def ajax_register(request):
             'errors': errors
         })
     else:
-        # Hash the password before saving
-        hashed_password = make_password(password)
-
         user = User(username=username)
-        user.set_password(hashed_password)
+        user.set_password(password)
         user.save()
 
         # Create and save the user
-        user = CustomUser(username=username, password=hashed_password, role=role)
+        user = CustomUser(username=username, password=password, role=role)
         user.save()
 
         return JsonResponse({
@@ -181,3 +180,39 @@ def update_approval_result(request, image_id):
         except ProcessingResult.DoesNotExist:
             return JsonResponse({'success': False, 'error': '处理结果未找到'})
     return JsonResponse({'success': False, 'error': '无效的请求'})
+
+@csrf_exempt
+def upload_dataset_folder(request):
+    if request.method == 'POST':
+        dataset_files = request.FILES.getlist('datasets')
+        if dataset_files:
+            dataset_folder = os.path.join(settings.MEDIA_ROOT, 'datasets_folder')
+            os.makedirs(dataset_folder, exist_ok=True)
+
+            for file in dataset_files:
+                relative_path = file.name  # 这里的name即前端设置的webkitRelativePath
+                file_path = os.path.join(dataset_folder, relative_path)
+
+                # 确保子文件夹存在
+                os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
+                with open(file_path, 'wb+') as destination:
+                    for chunk in file.chunks():
+                        destination.write(chunk)
+
+            return JsonResponse({'success': True})
+        else:
+            return JsonResponse({'success': False, 'error': '未接收到文件。'})
+    return JsonResponse({'success': False, 'error': '无效请求方法。'})
+
+def get_defect_statistics(request, period='day'):
+    data = get_defect_and_quality_rate(period)
+    return JsonResponse(data, safe=False)
+
+def get_device_utilization_statistics(request, device_id):
+    data = get_device_utilization(device_id)
+    return JsonResponse(data)
+
+def get_employee_work_status_statistics(request, user_id, period='day'):
+    data = get_employee_work_status(user_id, period)
+    return JsonResponse(data, safe=False)

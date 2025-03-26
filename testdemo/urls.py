@@ -4,8 +4,8 @@ from . import views
 urlpatterns = [
     path('', views.index, name='index'),
     path('operator_dashboard/', views.operator_dashboard ,name='operator_dashboard'),
-    path('admin_dashboard/', views.operator_dashboard ,name='admin_dashboard'),
-    path('maintenance_dashboard/', views.operator_dashboard ,name='maintenance_dashboard'),
+    path('admin_dashboard/', views.admin_dashboard ,name='admin_dashboard'),
+    path('maintenance_dashboard/', views.maintenance_dashboard ,name='maintenance_dashboard'),
 
 
     path('upload_image/', views.upload_image, name='upload_image'),
@@ -17,6 +17,11 @@ urlpatterns = [
 
     path('api/processing_results/problem/', views.get_images_for_audit, name='get_images_for_audit'),
     path('api/processing_results/<int:image_id>/update_approval/', views.update_approval_result, name='update_approval_result'),
+    path('api/upload_dataset_folder/', views.upload_dataset_folder, name='upload_dataset_folder'),
+
+    path('api/statistics/defects/<str:period>/', views.get_defect_statistics, name='defect_statistics'),
+    path('api/statistics/utilization/<int:device_id>/', views.get_device_utilization_statistics, name='device_utilization'),
+    path('api/statistics/employee/<int:user_id>/<str:period>/', views.get_employee_work_status_statistics, name='employee_work_status'),
 
     # 其他路由
     path('/ajax_login/', views.ajax_login, name='ajax_login'),

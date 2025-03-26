@@ -6,6 +6,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="{% static 'css/home.css' %}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <title>主页</title>
 </head>
 <body>
@@ -44,8 +45,45 @@
                 </div>
             </div>
             <div class="card-main" id="statistics">
-                <div class="card card-A">员工</div>
-                <div class="card card-B"></div>
+                <div class="card card-A">
+                    <h2>缺陷率与质量率</h2>
+                    <table id="defect-table">
+                        <thead>
+                            <tr>
+                                <th>日期</th>
+                                <th>缺陷率</th>
+                                <th>质量率</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 动态填充缺陷率与质量率数据 -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="card card-B">
+                    <h2>设备利用率</h2>
+                    <div id="device-utilization">
+                        <!-- 动态填充设备利用率 -->
+                    </div>
+                </div>
+            
+                <div class="card card-C">
+                    <h2>员工工作状态</h2>
+                    <table id="employee-table">
+                        <thead>
+                            <tr>
+                                <th>日期</th>
+                                <th>总图片数</th>
+                                <th>问题图片</th>
+                                <th>已审批图片</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 动态填充员工工作状态数据 -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
             <div class="card-main" id="other1">
                 <div class="card card-A">
@@ -224,10 +262,64 @@
             });
         }
 
+        function loadDefectStatistics(period) {
+            fetch(`/api/statistics/defects/${period}/`)
+                .then(response => response.json())
+                .then(data => {
+                    const tableBody = document.querySelector('#defect-table tbody');
+                    tableBody.innerHTML = '';  // Clear previous data
+                    data.forEach(item => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${item.period}</td>
+                            <td>${item.defect_rate.toFixed(2)}%</td>
+                            <td>${item.quality_rate.toFixed(2)}%</td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                });
+        }
+        
+        function loadDeviceUtilization(deviceId) {
+            fetch(`/api/statistics/utilization/${deviceId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    const utilizationDiv = document.getElementById('device-utilization');
+                    utilizationDiv.innerHTML = `
+                        <p>设备名称: ${data.device_name}</p>
+                        <p>总运行时间: ${data.total_runtime}秒</p>
+                        <p>总闲置时间: ${data.total_idle_time}秒</p>
+                        <p>设备利用率: ${data.utilization_rate.toFixed(2)}%</p>
+                    `;
+                });
+        }
+        
+        function loadEmployeeWorkStatus(userId, period) {
+            fetch(`/api/statistics/employee/${userId}/${period}/`)
+                .then(response => response.json())
+                .then(data => {
+                    const tableBody = document.querySelector('#employee-table tbody');
+                    tableBody.innerHTML = '';  // Clear previous data
+                    data.forEach(item => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${item.date}</td>
+                            <td>${item.total_images}</td>
+                            <td>${item.problem_images}</td>
+                            <td>${item.approved_images}</td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                });
+        }
+        
         window.onload = function() {
             switchTab('manage');
             loadDevices();  // 页面加载时先加载设备列表
             loadImagesForAudit();  // 页面加载时加载待审计图片
+            loadDefectStatistics('day');  // Load daily defect statistics
+            loadDeviceUtilization(1);  // Example for device ID 1
+            loadEmployeeWorkStatus(1, 'day');  // Example for user ID 1 and period 'day'
         };
     </script>
 </body>

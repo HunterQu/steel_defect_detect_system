@@ -45,8 +45,45 @@
                 </div>
             </div>
             <div class="card-main" id="statistics">
-                <div class="card card-A">员工</div>
-                <div class="card card-B"></div>
+                <div class="card card-A">
+                    <h2>缺陷率与质量率</h2>
+                    <table id="defect-table">
+                        <thead>
+                            <tr>
+                                <th>日期</th>
+                                <th>缺陷率</th>
+                                <th>质量率</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 动态填充缺陷率与质量率数据 -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="card card-B">
+                    <h2>设备利用率</h2>
+                    <div id="device-utilization">
+                        <!-- 动态填充设备利用率 -->
+                    </div>
+                </div>
+            
+                <div class="card card-C">
+                    <h2>员工工作状态</h2>
+                    <table id="employee-table">
+                        <thead>
+                            <tr>
+                                <th>日期</th>
+                                <th>总图片数</th>
+                                <th>问题图片</th>
+                                <th>已审批图片</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 动态填充员工工作状态数据 -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
             <div class="card-main" id="other1">
                 <div class="card card-A">
@@ -71,7 +108,18 @@
                     </div>
                 </div>
             </div>
-            <div class="card-main" id="other2"></div>
+            <div class="card-main" id="database">
+                <div class="card card-A">
+                    <h2>上传数据集（文件夹）</h2>
+                    <input type="file" id="dataset-folder" webkitdirectory directory multiple />
+                    <button onclick="uploadDatasetFolder()">上传文件夹</button>
+                </div>
+                <div class="card card-B" id="upload-status">
+                    <h2>上传状态</h2>
+                    <p id="status-message">尚未上传文件夹</p>
+                </div>
+            </div>
+
         </div>
     {% endif %}
 
@@ -225,11 +273,103 @@
                 }
             });
         }
+        
+        function uploadDatasetFolder() {
+            const fileInput = document.getElementById('dataset-folder');
+            const statusMessage = document.getElementById('status-message');
+        
+            if (fileInput.files.length === 0) {
+                statusMessage.textContent = '请选择文件夹再上传。';
+                return;
+            }
+        
+            const formData = new FormData();
+        
+            // 上传所有文件，保持文件夹结构
+            for (let i = 0; i < fileInput.files.length; i++) {
+                const file = fileInput.files[i];
+                formData.append('datasets', file, file.webkitRelativePath);
+            }
+        
+            fetch('/api/upload_dataset_folder/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    statusMessage.textContent = '文件夹上传成功！';
+                } else {
+                    statusMessage.textContent = `上传失败：${data.error}`;
+                }
+            })
+            .catch(error => {
+                statusMessage.textContent = `上传出错：${error}`;
+            });
+        }
+        
+        
+        function loadDefectStatistics(period) {
+            fetch(`/api/statistics/defects/${period}/`)
+                .then(response => response.json())
+                .then(data => {
+                    const tableBody = document.querySelector('#defect-table tbody');
+                    tableBody.innerHTML = '';  // Clear previous data
+                    data.forEach(item => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${item.period}</td>
+                            <td>${item.defect_rate.toFixed(2)}%</td>
+                            <td>${item.quality_rate.toFixed(2)}%</td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                });
+        }
+        
+        function loadDeviceUtilization(deviceId) {
+            fetch(`/api/statistics/utilization/${deviceId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    const utilizationDiv = document.getElementById('device-utilization');
+                    utilizationDiv.innerHTML = `
+                        <p>设备名称: ${data.device_name}</p>
+                        <p>总运行时间: ${data.total_runtime}秒</p>
+                        <p>总闲置时间: ${data.total_idle_time}秒</p>
+                        <p>设备利用率: ${data.utilization_rate.toFixed(2)}%</p>
+                    `;
+                });
+        }
+        
+        function loadEmployeeWorkStatus(userId, period) {
+            fetch(`/api/statistics/employee/${userId}/${period}/`)
+                .then(response => response.json())
+                .then(data => {
+                    const tableBody = document.querySelector('#employee-table tbody');
+                    tableBody.innerHTML = '';  // Clear previous data
+                    data.forEach(item => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${item.date}</td>
+                            <td>${item.total_images}</td>
+                            <td>${item.problem_images}</td>
+                            <td>${item.approved_images}</td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                });
+        }
 
         window.onload = function() {
             switchTab('manage');
             loadDevices();  // 页面加载时先加载设备列表
             loadImagesForAudit();  // 页面加载时加载待审计图片
+            loadDefectStatistics('day');  // Load daily defect statistics
+            loadDeviceUtilization(1);  // Example for device ID 1
+            loadEmployeeWorkStatus(1, 'day');  // Example for user ID 1 and period 'day'
         };
     </script>
 </body>
