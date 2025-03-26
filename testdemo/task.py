@@ -1,5 +1,6 @@
 import os
 import time
+import shutil
 import threading
 from django.conf import settings
 from django.utils import timezone
@@ -51,6 +52,35 @@ def check_new_images_periodically(interval_seconds=300):
 
                 print(f"New image imported: {filename} and associated with device: {device_name}")
 
+            time.sleep(interval_seconds)
+
+    thread = threading.Thread(target=task, daemon=True)
+    thread.start()
+
+
+def move_pending_images(interval_seconds=300):
+    def task():
+        while True:
+            source_dir = os.path.join(settings.MEDIA_ROOT, '待上传')
+            target_dir = os.path.join(settings.MEDIA_ROOT, 'images')
+
+            if not os.path.exists(source_dir):
+                print(f"源目录 {source_dir} 不存在")
+            else:
+                if not os.path.exists(target_dir):
+                    os.makedirs(target_dir)
+                    print(f"创建目标目录 {target_dir}")
+
+                valid_extensions = ('.png', '.jpg', '.jpeg', '.gif', '.bmp')
+                for filename in os.listdir(source_dir):
+                    if filename.lower().endswith(valid_extensions):
+                        src_path = os.path.join(source_dir, filename)
+                        dest_path = os.path.join(target_dir, filename)
+                        try:
+                            shutil.move(src_path, dest_path)
+                            print(f"成功移动 {filename}")
+                        except Exception as e:
+                            print(f"移动 {filename} 时出错: {e}")
             time.sleep(interval_seconds)
 
     thread = threading.Thread(target=task, daemon=True)

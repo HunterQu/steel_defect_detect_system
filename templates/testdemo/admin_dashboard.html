@@ -312,6 +312,55 @@
                     });
                 });
         }
+                    
+        // 使用 Chart.js 绘制饼图：展示缺陷率与质量率比例
+        function loadPieChart() {
+            fetch(`/api/statistics/defects/day/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.length > 0) {
+                        // 此处以第一条数据作为示例
+                        const stats = data[0];
+                        const defect_rate = stats.defect_rate;
+                        const quality_rate = stats.quality_rate;
+                        
+                        const ctx = document.getElementById('defectQualityChart').getContext('2d');
+                        new Chart(ctx, {
+                            type: 'pie',
+                            data: {
+                                labels: ['缺陷率', '质量率'],
+                                datasets: [{
+                                    data: [defect_rate, quality_rate],
+                                    backgroundColor: [
+                                        'rgba(255, 99, 132, 0.2)',
+                                        'rgba(54, 162, 235, 0.2)'
+                                    ],
+                                    borderColor: [
+                                        'rgba(255, 99, 132, 1)',
+                                        'rgba(54, 162, 235, 1)'
+                                    ],
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                plugins: {
+                                    legend: {
+                                        position: 'top',
+                                    },
+                                    title: {
+                                        display: true,
+                                        text: '缺陷率与质量率'
+                                    }
+                                }
+                            }
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error("加载饼图数据出错：", error);
+                });
+        }
         
         window.onload = function() {
             switchTab('manage');
