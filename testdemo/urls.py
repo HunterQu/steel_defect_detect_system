@@ -24,7 +24,7 @@ urlpatterns = [
     path('api/statistics/employee/<int:user_id>/<str:period>/', views.get_employee_work_status_statistics, name='employee_work_status'),
 
     # 其他路由
-    path('/ajax_login/', views.ajax_login, name='ajax_login'),
-    path('/ajax_register/', views.ajax_register, name='ajax_register'),
+    path('ajax_login/', views.ajax_login, name='ajax_login'),
+    path('ajax_register/', views.ajax_register, name='ajax_register'),
     # 其他路由
 ]

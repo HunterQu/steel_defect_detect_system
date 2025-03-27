@@ -9,6 +9,7 @@ from .models import Image, Device
 
 def check_new_images_periodically(interval_seconds=300):
     def task():
+        print("Start checking new images periodically")
         while True:
             images_path = os.path.join(settings.MEDIA_ROOT, 'images/')
             existing_images = set(Image.objects.values_list('image_file', flat=True))
@@ -29,10 +30,13 @@ def check_new_images_periodically(interval_seconds=300):
                 device_name, batch_number, timestamp_str = parts
                 timestamp = timezone.datetime.strptime(timestamp_str.replace('.jpg', ''), '%Y%m%d')
 
-                # 查找设备是否存在，如果存在则更新，如果不存在则创建
                 device, created = Device.objects.get_or_create(
                     device_name=device_name,
-                    defaults={'model_name': 'default_model', 'total_runtime': timezone.timedelta(), 'total_idle_time': timezone.timedelta()}
+                    defaults={
+                        'model_name': '',  # Set model_name as empty string
+                        'total_runtime': timezone.timedelta(),
+                        'total_idle_time': timezone.timedelta(),
+                    }
                 )
 
                 # 如果设备已经存在，并且批次号发生变化或其他信息需要更新，可做相应处理
@@ -60,6 +64,7 @@ def check_new_images_periodically(interval_seconds=300):
 
 def move_pending_images(interval_seconds=300):
     def task():
+        print("Start move pending images periodically")
         while True:
             source_dir = os.path.join(settings.MEDIA_ROOT, '待上传')
             target_dir = os.path.join(settings.MEDIA_ROOT, 'images')
