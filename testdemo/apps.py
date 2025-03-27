@@ -8,5 +8,5 @@ class TestdemoConfig(AppConfig):
 
     def ready(self):
         from .task import check_new_images_periodically, move_pending_images
-        check_new_images_periodically(interval_seconds=300)  # 每5分钟检查一次
-        move_pending_images(interval_seconds=200)  # 每5分钟执行一次
+        check_new_images_periodically(interval_seconds=30)
+        move_pending_images(interval_seconds=20)

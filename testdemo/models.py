@@ -14,26 +14,28 @@ class CustomUser(models.Model):
     def __str__(self):
         return self.username
 
-# 图片模型
-class Image(models.Model):
-    image_name = models.CharField(max_length=255)
-    batch_number = models.CharField(max_length=100)
-    timestamp = models.DateTimeField(auto_now_add=True)
-    image_file = models.ImageField(upload_to='images/')  # 保存图片文件的路径
-
-    def __str__(self):
-        return self.image_name
-
 # 设备模型
 class Device(models.Model):
     device_name = models.CharField(max_length=255)
     model_name = models.CharField(max_length=255)
-    image = models.ForeignKey(Image, related_name='devices', on_delete=models.CASCADE)
     total_runtime = models.DurationField(default=timezone.timedelta())  # 总运行时间
     total_idle_time = models.DurationField(default=timezone.timedelta())  # 总空闲时间
 
     def __str__(self):
         return self.device_name
+
+# 图片模型
+class Image(models.Model):
+    image_name = models.CharField(max_length=255)
+    batch_number = models.CharField(max_length=100)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    device = models.ForeignKey(Device, related_name='images', on_delete=models.CASCADE)
+    image_file = models.ImageField(upload_to='images/')  # 保存图片文件的路径
+
+    def __str__(self):
+        return self.image_name
+
+
 
 class DeviceUsage(models.Model):
     device = models.ForeignKey(Device, on_delete=models.CASCADE)

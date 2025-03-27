@@ -42,12 +42,12 @@ def check_new_images_periodically(interval_seconds=300):
                     device.save()
 
                 # 创建图片记录
-                Image.objects.create(
+                image = Image.objects.create(
                     image_name=filename,
                     batch_number=batch_number,
+                    device=device,
                     timestamp=timestamp,
                     image_file=file_path,
-                    device=device  # 关联设备
                 )
 
                 print(f"New image imported: {filename} and associated with device: {device_name}")
