@@ -66,6 +66,11 @@
                 
                 <div class="card card-B">
                     <h2>设备利用率</h2>
+                    <label for="device-select">选择设备:</label>
+                    <select id="device-select" onchange="loadDeviceUtilizationById()">
+                        <option value="">请选择设备</option>
+                        <!-- 设备列表将在页面加载后动态填充 -->
+                    </select>
                     <div id="device-utilization">
                         <!-- 动态填充设备利用率 -->
                     </div>
@@ -333,7 +338,15 @@
                 });
         }
         
-        function loadDeviceUtilization(deviceId) {
+        // 根据选择的设备ID加载设备利用率
+        function loadDeviceUtilizationById() {
+            const deviceId = document.getElementById('device-select').value;
+            
+            if (!deviceId) {
+                document.getElementById('device-utilization').innerHTML = '';
+                return;
+            }
+    
             fetch(`/api/statistics/utilization/${deviceId}/`)
                 .then(response => response.json())
                 .then(data => {
@@ -344,6 +357,9 @@
                         <p>总闲置时间: ${data.total_idle_time}秒</p>
                         <p>设备利用率: ${data.utilization_rate.toFixed(2)}%</p>
                     `;
+                })
+                .catch(error => {
+                    console.error('加载设备利用率出错:', error);
                 });
         }
         
@@ -414,11 +430,27 @@
                     console.error("加载饼图数据出错：", error);
                 });
         }
+        
+        // 加载设备列表到选择框中
+        function loadDeviceList() {
+            fetch('/api/devices/')  // 获取设备列表
+                .then(response => response.json())
+                .then(devices => {
+                    const deviceSelectElement = document.getElementById('device-select');
+                    devices.forEach(device => {
+                        const option = document.createElement('option');
+                        option.value = device.id;
+                        option.textContent = device.device_name;
+                        deviceSelectElement.appendChild(option);
+                    });
+                });
+        }
 
         window.onload = function() {
             switchTab('manage');
             loadDevices();  // 页面加载时先加载设备列表
             loadImagesForAudit();  // 页面加载时加载待审计图片
+            loadDeviceList();
             loadDefectStatistics('day');  // Load daily defect statistics
             loadDeviceUtilization(1);  // Example for device ID 1
             loadEmployeeWorkStatus(1, 'day');  // Example for user ID 1 and period 'day'
