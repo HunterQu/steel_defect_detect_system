@@ -1,0 +1,783 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'css/home.css' %}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <title>零部件检测系统 - 管理员面板</title>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: 'Roboto Mono', monospace;
+            background-color: #f5f8ff; /* 添加浅蓝色背景 */
+        }
+        
+        .admin-dashboard {
+            min-height: 100vh;
+            padding: 80px 20px 20px; /* 顶部增加padding避免导航栏遮挡 */
+        }
+        .grid-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                linear-gradient(rgba(0, 119, 255, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 119, 255, 0.1) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: -1;
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* 两栏布局样式 */
+        .two-column-layout {
+            display: flex;
+            gap: 20px;
+        }
+        .column-left {
+            flex: 1;
+            min-width: 300px;
+        }
+        .column-right {
+            flex: 2;
+        }
+        
+        /* 统计导航样式 */
+        .stats-nav {
+            display: flex;
+            gap: 15px;
+            margin: 30px 0 25px 0;
+        }
+        .stats-nav-btn {
+            padding: 15px 30px;
+            font-size: 18px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .stats-nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .stats-nav-btn.active {
+            background: #3498db;
+            color: white;
+            font-weight: bold;
+        }
+        
+        /* 图片预览样式 */
+        .image-details img {
+            max-width: 100%;
+            max-height: 300px;
+            margin-bottom: 10px;
+        }
+        
+        /* 设备列表样式 */
+        #device-list {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .device-item {
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            color: #333; /* 加深字体颜色 */
+        }
+        .device-item:hover {
+            background: #f5f5f5;
+            color: #000; /* 悬停时更深 */
+        }
+
+        /* 设备利用率表格样式 */
+        .utilization-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.9em;
+            box-shadow: 0 0 20px rgba(0,0,0,0.15);
+        }
+        .utilization-table thead tr {
+            background-color: #3498db;
+            color: #ffffff;
+            text-align: left;
+        }
+        .utilization-table th,
+        .utilization-table td {
+            padding: 12px 15px;
+        }
+        .utilization-table tbody tr {
+            border-bottom: 1px solid #dddddd;
+        }
+        .utilization-table tbody tr:nth-of-type(even) {
+            background-color: #f3f3f3;
+        }
+        .utilization-table tbody tr:last-of-type {
+            border-bottom: 2px solid #3498db;
+        }
+        .utilization-table tbody tr:hover {
+            background-color: #e6f7ff;
+        }
+    </style>
+</head>
+<body>
+    <div class="grid-overlay"></div>
+    {% if user.is_authenticated %}
+        <!-- 导航栏 -->
+        <nav class="admin-nav">
+            <div class="admin-nav-item active" onclick="switchTab('manage')">
+                <i class="fas fa-cogs"></i> 设备管理
+            </div>
+            <div class="admin-nav-item" onclick="switchTab('statistics')">
+                <i class="fas fa-chart-line"></i> 生产统计
+            </div>
+            <div class="admin-nav-item" onclick="switchTab('other1')">
+                <i class="fas fa-clipboard-check"></i> 质量审计
+            </div>
+            <div class="admin-nav-item" onclick="location.href='/'">
+                <i class="fas fa-sign-out-alt"></i> 退出
+            </div>
+        </nav>
+    
+        <!-- 页面主体内容 -->
+        <div class="admin-dashboard">
+            <div class="admin-content" id="manage">
+                <div class="two-column-layout">
+                    <!-- 设备列表列 -->
+                    <div class="column-left">
+                        <div class="stat-card">
+                            <h2><i class="fas fa-server"></i> 设备列表</h2>
+                            <div class="search-box">
+                                <input type="text" id="search-input" placeholder="搜索设备..." onkeyup="searchDevices()">
+                                <i class="fas fa-search"></i>
+                            </div>
+                            <ul id="device-list">
+                                <!-- 动态加载设备列表 -->
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- 设备信息列 -->
+                    <div class="column-right">
+                        <div class="stat-card" id="device-info">
+                            <h2><i class="fas fa-info-circle"></i> 设备信息</h2>
+                            <div id="device-details">
+                                <p id="device-name"></p>
+                                <p id="device-model"></p>
+                                <p id="device-runtime"></p>
+                                <p id="device-idle"></p>
+                                <div id="model-selection">
+                                    <label for="model-choice">选择模型:</label>
+                                    <select id="model-choice">
+                                        <option value="model1">模型1</option>
+                                        <option value="model2">模型2</option>
+                                    </select>
+                                    <button id="submit-model" onclick="submitModel()">提交模型</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="admin-content" id="statistics">
+                <div class="stats-nav">
+                    <button class="stats-nav-btn active" onclick="showStatsTab('defects')">缺陷统计</button>
+                    <button class="stats-nav-btn" onclick="showStatsTab('utilization')">设备利用率</button>
+                    <button class="stats-nav-btn" onclick="showStatsTab('employee')">员工状态</button>
+                </div>
+
+                <div class="stats-content" id="defects-stats">
+                    <div class="stat-card">
+                        <h2><i class="fas fa-chart-pie"></i> 缺陷率与质量率</h2>
+                        <table id="defect-table">
+                            <thead>
+                                <tr>
+                                    <th>日期</th>
+                                    <th>缺陷率</th>
+                                    <th>质量率</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- 动态填充缺陷率与质量率数据 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="stats-content" id="utilization-stats" style="display:none">
+                    <div class="stat-card">
+                        <h2><i class="fas fa-tachometer-alt"></i> 设备利用率</h2>
+                        <div id="device-utilization">
+                            <!-- 动态填充设备利用率 -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-content" id="employee-stats" style="display:none">
+                    <div class="stat-card">
+                        <h2><i class="fas fa-user-clock"></i> 员工工作状态</h2>
+                        <table id="employee-table">
+                            <thead>
+                                <tr>
+                                    <th>日期</th>
+                                    <th>总图片数</th>
+                                    <th>问题图片</th>
+                                    <th>已审批图片</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- 动态填充员工工作状态数据 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="admin-content" id="other1">
+                <div class="two-column-layout">
+                    <!-- 待审计图片列表列 -->
+                    <div class="column-left">
+                        <div class="stat-card">
+                            <h2><i class="fas fa-images"></i> 待审计图片列表</h2>
+                            <ul id="image-list">
+                                <!-- 动态加载待审计的图片 -->
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- 图片信息列 -->
+                    <div class="column-right">
+                        <div class="stat-card" id="image-info">
+                            <h2><i class="fas fa-image"></i> 图片信息</h2>
+                            <div class="image-details">
+                                <img id="selected-image" src="" alt="Image Preview">
+                                <p id="image-name"></p>
+                                <p id="image-batch"></p>
+                                <p id="image-result"></p>
+                                <div id="approval-selection">
+                                    <label for="approval-choice">选择审批结果:</label>
+                                    <select id="approval-choice">
+                                        <option value="approved">通过</option>
+                                        <option value="rejected">不通过</option>
+                                    </select>
+                                    <button id="submit-approval" onclick="submitApproval()">提交审批结果</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Font Awesome 图标库 (使用可靠的CDN) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        function switchTab(tabName, event) {
+            try {
+                const allContainers = document.querySelectorAll('.admin-content');
+                allContainers.forEach(container => {
+                    container.style.display = 'none';
+                });
+
+                const activeContainer = document.getElementById(tabName);
+                if (activeContainer) {
+                    activeContainer.style.display = 'block';
+                }
+
+                // 更新导航栏active状态
+                const navItems = document.querySelectorAll('.admin-nav-item');
+                navItems.forEach(item => {
+                    item.classList.remove('active');
+                });
+                if (event && event.target) {
+                    event.target.classList.add('active');
+                }
+            } catch (error) {
+                console.error('切换标签页出错:', error);
+                // 默认显示管理标签页
+                document.getElementById('manage').style.display = 'block';
+            }
+        }
+
+        async function loadDevices() {
+            try {
+                const response = await fetch('/api/devices/');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const devices = await response.json();
+                const deviceListElement = document.getElementById('device-list');
+                deviceListElement.innerHTML = ''; // 清空现有列表
+
+                if (devices.length === 0) {
+                    deviceListElement.innerHTML = '<li class="device-item">暂无设备数据</li>';
+                } else {
+                    devices.forEach(device => {
+                        const deviceElement = document.createElement('li');
+                        deviceElement.className = 'device-item';
+                        deviceElement.setAttribute('data-device-id', device.id);
+                        deviceElement.innerHTML = `
+                            <span class="device-name">${device.device_name}</span>
+                            <span class="device-status ${device.status}"></span>
+                        `;
+                        deviceElement.onclick = () => loadDeviceInfo(device.id);
+                        deviceListElement.appendChild(deviceElement);
+                    });
+                }
+                return;
+
+                devices.forEach(device => {
+                    const deviceElement = document.createElement('li');
+                    deviceElement.className = 'device-item';
+                    deviceElement.setAttribute('data-device-id', device.id);
+                    deviceElement.innerHTML = `
+                        <span class="device-name">${device.device_name}</span>
+                        <span class="device-status ${device.status}"></span>
+                    `;
+                    deviceElement.onclick = () => loadDeviceInfo(device.id);
+                    deviceListElement.appendChild(deviceElement);
+                });
+            } catch (error) {
+                console.error('加载设备列表失败:', error);
+                deviceListElement.innerHTML = '<li class="device-item" style="color:red">加载设备列表失败</li>';
+            }
+        }
+
+        async function loadDeviceInfo(deviceId) {
+            try {
+                const response = await fetch(`/api/devices/${deviceId}/`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const device = await response.json();
+                
+                document.getElementById('device-name').innerHTML = `
+                    <i class="icon-device"></i>
+                    <span>设备名称: ${device.device_name}</span>
+                `;
+                document.getElementById('device-model').innerHTML = `
+                    <i class="icon-model"></i>
+                    <span>当前模型: ${device.model_name}</span>
+                `;
+                
+                // 保存设备ID到提交按钮
+                document.getElementById('submit-model').setAttribute('data-device-id', deviceId);
+            } catch (error) {
+                console.error('加载设备信息失败:', error);
+                alert('加载设备信息失败，请稍后重试');
+            }
+        }
+        
+        function submitModel() {
+            const deviceId = document.getElementById('submit-model').getAttribute('data-device-id');
+            const selectedModel = document.getElementById('model-choice').value;
+
+            fetch(`/api/devices/${deviceId}/update_model/`, {  // 提交更新的模型
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),  // 确保提交 CSRF Token（Django 默认使用）
+                },
+                body: JSON.stringify({
+                    model_name: selectedModel
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('设备模型更新成功！');
+                    loadDeviceInfo(deviceId);  // 更新成功后重新加载设备信息
+                } else {
+                    alert('更新失败，请重试。');
+                }
+            });
+        }
+        
+        // 获取 CSRF Token 用于 POST 请求
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // 搜索功能
+        function searchDevices() {
+            var input = document.getElementById('search-input');
+            var filter = input.value.toLowerCase();  // 获取搜索框的值并转换为小写
+            var ul = document.getElementById('device-list');
+            var li = ul.getElementsByTagName('li');  // 获取所有设备列表项
+        
+            // 遍历所有列表项
+            for (var i = 0; i < li.length; i++) {
+                var device = li[i];
+                var text = device.textContent || device.innerText;  // 获取列表项的文本内容
+        
+                // 如果列表项的文本内容包含搜索框的值，则显示该项；否则隐藏该项
+                if (text.toLowerCase().indexOf(filter) > -1) {
+                    device.style.display = '';  // 显示设备项
+                } else {
+                    device.style.display = 'none';  // 隐藏设备项
+                }
+            }
+        }
+        
+        // 加载待审计的图片列表（只显示有问题的图片）
+        function loadImagesForAudit() {
+            fetch('/api/processing_results/problem/')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP错误! 状态码: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(processingResults => {
+                    const imageListElement = document.getElementById('image-list');
+                    imageListElement.innerHTML = ''; // 清空现有列表
+
+                    if (processingResults.length === 0) {
+                        imageListElement.innerHTML = '<li class="image-item">暂无待审核图片</li>';
+                        return;
+                    }
+
+                    processingResults.forEach(result => {
+                        const imageElement = document.createElement('li');
+                        imageElement.className = 'image-item';
+                        imageElement.innerHTML = `
+                            <span class="image-name">${result.image.image_name}</span>
+                            <span class="image-status ${result.result === 'problem' ? 'problem' : 'approved'}"></span>
+                        `;
+                        imageElement.onclick = () => {
+                            if (result.id) {
+                                loadImageInfo(result.id);
+                            } else {
+                                console.error('Processing result ID is undefined for:', result);
+                                alert('无法加载图片信息：缺少处理结果ID');
+                            }
+                        };
+                        imageElement.setAttribute('data-result-id', result.id);
+                        imageListElement.appendChild(imageElement);
+                    });
+                })
+                .catch(error => {
+                    console.error('加载图片列表失败:', error);
+                    imageListElement.innerHTML = '<li class="image-item" style="color:red">加载图片列表失败</li>';
+                });
+        }
+        
+        function loadImageInfo(processingResultId) {
+            if (!processingResultId || processingResultId === 'undefined') {
+                console.error('Processing result ID is invalid:', processingResultId);
+                alert('处理结果ID无效');
+                return;
+            }
+            console.log('Loading image info for processing result ID:', processingResultId);
+            fetch(`/api/processing_results/${processingResultId}/`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP错误! 状态码: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(processingResult => {
+                    if (!processingResult.image || !processingResult.image.image_url) {
+                        throw new Error('图片数据不完整');
+                    }
+                    document.getElementById('selected-image').src = processingResult.image.image_url;
+                    document.getElementById('image-name').textContent = `图片名称: ${processingResult.image.image_name}`;
+                    document.getElementById('image-batch').textContent = `批次: ${processingResult.image.batch_number || '无'}`;
+                    document.getElementById('image-result').textContent = `检测结果: ${processingResult.result || '待检测'}`;
+                    document.getElementById('submit-approval').setAttribute('data-image-id', processingResultId);
+                })
+                .catch(error => {
+                    console.error('加载图片信息失败:', error);
+                    alert(`加载图片信息失败: ${error.message}`);
+                });
+        }
+        
+        function submitApproval() {
+            const processingResultId = document.getElementById('submit-approval').getAttribute('data-image-id');
+            const approvalResult = document.getElementById('approval-choice').value;
+        
+            fetch(`/api/processing_results/${processingResultId}/update_approval/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: JSON.stringify({
+                    approval_result: approvalResult
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP错误! 状态码: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    alert('审批结果提交成功！');
+                    loadImageInfo(processingResultId);
+                    loadImagesForAudit(); // 重新加载待审计列表
+                } else {
+                    alert('提交失败，请重试。');
+                }
+            })
+            .catch(error => {
+                console.error('提交审批结果失败:', error);
+                alert(`提交审批结果失败: ${error.message}`);
+            });
+        }
+
+        function loadDefectStatistics(period) {
+            fetch(`/api/statistics/defects/${period}/`)
+                .then(response => response.json())
+                .then(data => {
+                    const tableBody = document.querySelector('#defect-table tbody');
+                    tableBody.innerHTML = '';  // Clear previous data
+                    data.forEach(item => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${item.period}</td>
+                            <td>${item.defect_rate.toFixed(2)}%</td>
+                            <td>${item.quality_rate.toFixed(2)}%</td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                });
+        }
+        
+        function loadDeviceUtilization() {
+            fetch('/api/statistics/utilization/all/')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP错误! 状态码: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const utilizationDiv = document.getElementById('device-utilization');
+                    
+                    if (!data || data.length === 0) {
+                        utilizationDiv.innerHTML = '<p class="no-data">暂无设备利用率数据</p>';
+                        return;
+                    }
+
+                    let html = `
+                        <table class="utilization-table">
+                            <thead>
+                                <tr>
+                                    <th>设备名称</th>
+                                    <th>总运行时间(小时)</th>
+                                    <th>总闲置时间(小时)</th>
+                                    <th>利用率(%)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    
+                    data.forEach(device => {
+                        html += `
+                            <tr>
+                                <td>${device.device_name || '未知设备'}</td>
+                                <td>${device.total_runtime ? (device.total_runtime / 3600).toFixed(2) : '0.00'}</td>
+                                <td>${device.total_idle_time ? (device.total_idle_time / 3600).toFixed(2) : '0.00'}</td>
+                                <td>${device.utilization_rate ? device.utilization_rate.toFixed(2) : '0.00'}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    html += `
+                            </tbody>
+                        </table>
+                    `;
+                    utilizationDiv.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('加载设备利用率失败:', error);
+                    document.getElementById('device-utilization').innerHTML = 
+                        '<p class="error-message">加载设备利用率数据失败: ' + error.message + '</p>';
+                });
+        }
+        
+        function loadEmployeeWorkStatus(userId, period) {
+            fetch(`/api/statistics/employee/${userId}/${period}/`)
+                .then(response => response.json())
+                .then(data => {
+                    const tableBody = document.querySelector('#employee-table tbody');
+                    tableBody.innerHTML = '';  // Clear previous data
+                    data.forEach(item => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${item.date}</td>
+                            <td>${item.total_images}</td>
+                            <td>${item.problem_images}</td>
+                            <td>${item.approved_images}</td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                });
+        }
+                    
+        // 使用 Chart.js 绘制饼图：展示缺陷率与质量率比例
+        function loadPieChart() {
+            fetch(`/api/statistics/defects/day/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.length > 0) {
+                        // 此处以第一条数据作为示例
+                        const stats = data[0];
+                        const defect_rate = stats.defect_rate;
+                        const quality_rate = stats.quality_rate;
+                        
+                        const ctx = document.getElementById('defectQualityChart').getContext('2d');
+                        new Chart(ctx, {
+                            type: 'pie',
+                            data: {
+                                labels: ['缺陷率', '质量率'],
+                                datasets: [{
+                                    data: [defect_rate, quality_rate],
+                                    backgroundColor: [
+                                        'rgba(255, 99, 132, 0.2)',
+                                        'rgba(54, 162, 235, 0.2)'
+                                    ],
+                                    borderColor: [
+                                        'rgba(255, 99, 132, 1)',
+                                        'rgba(54, 162, 235, 1)'
+                                    ],
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                plugins: {
+                                    legend: {
+                                        position: 'top',
+                                    },
+                                    title: {
+                                        display: true,
+                                        text: '缺陷率与质量率'
+                                    }
+                                }
+                            }
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error("加载饼图数据出错：", error);
+                });
+        }
+        
+        // 显示统计模块的不同标签页
+        function showStatsTab(tabName) {
+            // 更新按钮状态
+            const buttons = document.querySelectorAll('.stats-nav-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // 显示对应的内容
+            const contents = document.querySelectorAll('.stats-content');
+            contents.forEach(content => content.style.display = 'none');
+            document.getElementById(`${tabName}-stats`).style.display = 'block';
+        }
+
+        // 更新设备信息加载函数
+        async function loadDeviceInfo(deviceId) {
+            try {
+                const response = await fetch(`/api/devices/${deviceId}/`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const device = await response.json();
+                
+                document.getElementById('device-name').innerHTML = `
+                    <i class="fas fa-server"></i>
+                    <span>设备名称: ${device.device_name}</span>
+                `;
+                document.getElementById('device-model').innerHTML = `
+                    <i class="fas fa-microchip"></i>
+                    <span>当前模型: ${device.model_name}</span>
+                `;
+                document.getElementById('device-runtime').innerHTML = `
+                    <i class="fas fa-clock"></i>
+                    <span>运行时间: ${device.runtime}小时</span>
+                `;
+                document.getElementById('device-idle').innerHTML = `
+                    <i class="fas fa-bed"></i>
+                    <span>闲置时间: ${device.idle_time}小时</span>
+                `;
+                
+                // 保存设备ID到提交按钮
+                document.getElementById('submit-model').setAttribute('data-device-id', deviceId);
+            } catch (error) {
+                console.error('加载设备信息失败:', error);
+                alert('加载设备信息失败，请稍后重试');
+            }
+        }
+
+        // 更新图片信息加载函数
+        function loadImageInfo(processingResultId) {
+            if (!processingResultId) {
+                console.error('Processing result ID is undefined');
+                alert('处理结果ID无效');
+                return;
+            }
+            fetch(`/api/processing_results/${processingResultId}/`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP错误! 状态码: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(processingResult => {
+                    if (!processingResult.image || !processingResult.image.image_url) {
+                        throw new Error('图片数据不完整');
+                    }
+                    document.getElementById('selected-image').src = processingResult.image.image_url;
+                    document.getElementById('image-name').textContent = `图片名称: ${processingResult.image.image_name}`;
+                    document.getElementById('image-batch').textContent = `批次: ${processingResult.image.batch_number || '无'}`;
+                    document.getElementById('image-result').textContent = `检测结果: ${processingResult.result || '待检测'}`;
+                    document.getElementById('submit-approval').setAttribute('data-image-id', processingResultId);
+                })
+                .catch(error => {
+                    console.error('加载图片信息失败:', error);
+                    alert(`加载图片信息失败: ${error.message}`);
+                });
+        }
+
+        window.onload = function() {
+            try {
+                switchTab('manage');
+                loadDevices();
+                loadImagesForAudit();
+                loadDefectStatistics('day');
+                loadDeviceUtilization(); // 加载所有设备的利用率数据
+                loadEmployeeWorkStatus(1, 'day'); // 默认加载用户ID为1的当天数据
+            } catch (error) {
+                console.error('页面加载出错:', error);
+                // 确保至少显示主要内容
+                document.getElementById('manage').style.display = 'block';
+                loadDevices();
+            }
+        };
+    </script>

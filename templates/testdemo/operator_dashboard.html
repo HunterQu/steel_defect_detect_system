@@ -1,0 +1,613 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'css/home.css' %}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <title>零部件检测系统 - 操作员面板</title>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: 'Roboto Mono', monospace;
+            background-color: #f5f8ff;
+        }
+        
+        .operator-dashboard {
+            min-height: 100vh;
+            padding: 120px 20px 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .grid-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                linear-gradient(rgba(0, 119, 255, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 119, 255, 0.1) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: -1;
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* 两栏布局样式 */
+        .two-column-layout {
+            display: flex;
+            gap: 20px;
+        }
+        .column-left {
+            flex: 1;
+            min-width: 300px;
+        }
+        .column-right {
+            flex: 2;
+        }
+        
+        /* 统计导航样式 */
+        .stats-nav-btn {
+            padding: 15px 30px;
+            font-size: 18px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .stats-nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .stats-nav-btn.active {
+            background: #3498db;
+            color: white;
+            font-weight: bold;
+        }
+        
+        /* 图片预览样式 */
+        .image-details img {
+            max-width: 100%;
+            max-height: 300px;
+            margin-bottom: 10px;
+        }
+        
+        /* 图片列表样式 */
+        .image-list {
+            max-height: 500px;
+            overflow-y: auto;
+            padding: 0;
+            margin: 0;
+            list-style: none;
+        }
+        .image-list li, .image-item {
+            padding: 12px 15px;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            cursor: pointer;
+            color: #444;
+            transition: all 0.2s ease;
+            border-radius: 6px;
+            margin: 5px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .image-list li:hover, .image-item:hover {
+            background: rgba(52, 152, 219, 0.08);
+            color: #3498db;
+            transform: translateX(3px);
+        }
+        .image-status {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ccc;
+        }
+        .image-status.problem {
+            background: #e74c3c;
+        }
+        .image-status.approved {
+            background: #2ecc71;
+        }
+
+        /* 设备列表样式 - 更现代化 */
+        #device-list {
+            max-height: 500px;
+            overflow-y: auto;
+            padding: 0;
+            margin: 0;
+            list-style: none;
+        }
+        .device-item {
+            padding: 12px 15px;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            cursor: pointer;
+            color: #444;
+            transition: all 0.2s ease;
+            border-radius: 6px;
+            margin: 5px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .device-item:hover {
+            background: rgba(52, 152, 219, 0.08);
+            color: #3498db;
+            transform: translateX(3px);
+        }
+        .device-status {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ccc;
+        }
+        .device-status.active {
+            background: #2ecc71;
+        }
+        .device-status.inactive {
+            background: #e74c3c;
+        }
+
+        /* 导航栏样式 - 更简洁现代 */
+        .operator-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255,255,255,0.98);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+            z-index: 1000;
+            display: flex;
+            padding: 12px 30px;
+            border-bottom: 1px solid rgba(0,0,0,0.03);
+        }
+        .operator-nav-item {
+            padding: 12px 25px;
+            margin-right: 5px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            color: #555;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .operator-nav-item:hover {
+            background: rgba(52, 152, 219, 0.1);
+            color: #3498db;
+            transform: translateY(-1px);
+        }
+        .operator-nav-item.active {
+            background: linear-gradient(135deg, #3498db, #2c81ba);
+            color: white;
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
+
+        /* 卡片样式 - 更现代 */
+        .stat-card {
+            background: white;
+            border-radius: 14px;
+            padding: 80px;
+            margin-bottom: 25px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+            border: 1px solid rgba(0,0,0,0.02);
+            transition: all 0.3s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        .stat-card h2 {
+            margin-top: 0;
+            color: #333;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+        .stat-card h2 i {
+            color: #3498db;
+            font-size: 1.2em;
+        }
+        
+        /* 设备详情文字颜色 */
+        #device-details p {
+            color: #222;
+        }
+
+        /* 输入框和按钮样式 */
+        .search-box {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        .search-box input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-family: 'Roboto Mono', monospace;
+        }
+        .search-box i {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="grid-overlay"></div>
+    {% if user.is_authenticated %}
+        <!-- 导航栏 - 简化版 -->
+        <nav class="operator-nav">
+            <div class="operator-nav-item active" onclick="switchTab('manage')">
+                <i class="fas fa-tv"></i> 设备监控
+            </div>
+            <div class="operator-nav-item" onclick="switchTab('audit')">
+                <i class="fas fa-check-circle"></i> 质量审核
+            </div>
+            <div class="operator-nav-item" onclick="location.href='/'" style="margin-left: auto;">
+                <i class="fas fa-sign-out-alt"></i> 退出系统
+            </div>
+        </nav>
+    
+        <!-- 页面主体内容 -->
+        <div class="operator-dashboard">
+            <div class="operator-content" id="manage">
+                <div class="two-column-layout">
+                    <!-- 设备列表列 -->
+                    <div class="column-left">
+                        <div class="stat-card">
+                            <h2><i class="fas fa-list-ul"></i> 设备列表</h2>
+                            <div class="search-box">
+                                <input type="text" id="search-input" placeholder="搜索设备..." onkeyup="searchDevices()">
+                                <i class="fas fa-search"></i>
+                            </div>
+                            <ul id="device-list">
+                                <!-- 动态加载设备列表 -->
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- 设备信息列 -->
+                    <div class="column-right">
+                        <div class="stat-card" id="device-info">
+                            <h2><i class="fas fa-info-circle"></i> 设备详情</h2>
+                            <div id="device-details">
+                                <p id="device-name"></p>
+                                <p id="device-model"></p>
+                                <div id="model-selection">
+                                    <label for="model-choice">选择模型:</label>
+                                    <select id="model-choice">
+                                        <option value="model1">模型1</option>
+                                        <option value="model2">模型2</option>
+                                    </select>
+                                    <button class="stats-nav-btn" id="submit-model" onclick="submitModel()">提交模型</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="operator-content" id="audit">
+                <div class="two-column-layout">
+                    <!-- 待审计图片列表列 -->
+                    <div class="column-left">
+                        <div class="stat-card">
+                            <h2><i class="fas fa-tasks"></i> 待审核图片</h2>
+                            <ul id="image-list" class="image-list">
+                                <!-- 动态加载待审计的图片 -->
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- 图片信息列 -->
+                    <div class="column-right">
+                        <div class="stat-card" id="image-info">
+                            <h2><i class="fas fa-image"></i> 图片详情</h2>
+                            <div class="image-details">
+                                <img id="selected-image" src="" alt="Image Preview">
+                                <p id="image-name"></p>
+                                <p id="image-batch"></p>
+                                <p id="image-result"></p>
+                                <div id="approval-selection">
+                                    <label for="approval-choice">选择审批结果:</label>
+                                    <select id="approval-choice">
+                                        <option value="approved">通过</option>
+                                        <option value="rejected">不通过</option>
+                                    </select>
+                                    <button class="stats-nav-btn" id="submit-approval" onclick="submitApproval()">提交审批结果</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Font Awesome 图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        // 保留原有所有JavaScript功能代码不变
+        function switchTab(tabName, event) {
+            try {
+                const allContainers = document.querySelectorAll('.operator-content');
+                allContainers.forEach(container => {
+                    container.style.display = 'none';
+                });
+
+                const activeContainer = document.getElementById(tabName);
+                if (activeContainer) {
+                    activeContainer.style.display = 'block';
+                }
+
+                // 更新导航栏active状态
+                const navItems = document.querySelectorAll('.operator-nav-item');
+                navItems.forEach(item => {
+                    item.classList.remove('active');
+                });
+                if (event && event.target) {
+                    event.target.classList.add('active');
+                }
+            } catch (error) {
+                console.error('切换标签页出错:', error);
+                // 默认显示管理标签页
+                document.getElementById('manage').style.display = 'block';
+            }
+        }
+
+        async function loadDevices() {
+            try {
+                const response = await fetch('/api/devices/');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const devices = await response.json();
+                const deviceListElement = document.getElementById('device-list');
+                deviceListElement.innerHTML = ''; // 清空现有列表
+
+                if (devices.length === 0) {
+                    deviceListElement.innerHTML = '<li class="device-item">暂无设备数据</li>';
+                    return;
+                }
+
+                devices.forEach(device => {
+                    const deviceElement = document.createElement('li');
+                    deviceElement.className = 'device-item';
+                    deviceElement.innerHTML = `
+                        <span class="device-name">${device.device_name}</span>
+                        <span class="device-status ${device.status}"></span>
+                    `;
+                    deviceElement.onclick = () => loadDeviceInfo(device.id);
+                    deviceListElement.appendChild(deviceElement);
+                });
+            } catch (error) {
+                console.error('加载设备列表失败:', error);
+                deviceListElement.innerHTML = '<li class="device-item" style="color:red">加载设备列表失败</li>';
+            }
+        }
+
+        async function loadDeviceInfo(deviceId) {
+            try {
+                const response = await fetch(`/api/devices/${deviceId}/`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const device = await response.json();
+                
+                document.getElementById('device-name').innerHTML = `
+                    <i class="fas fa-server"></i>
+                    <span>设备名称: ${device.device_name}</span>
+                `;
+                document.getElementById('device-model').innerHTML = `
+                    <i class="fas fa-microchip"></i>
+                    <span>当前模型: ${device.model_name}</span>
+                `;
+                
+                // 保存设备ID到提交按钮
+                document.getElementById('submit-model').setAttribute('data-device-id', deviceId);
+            } catch (error) {
+                console.error('加载设备信息失败:', error);
+                alert('加载设备信息失败，请稍后重试');
+            }
+        }
+        
+        function submitModel() {
+            const deviceId = document.getElementById('submit-model').getAttribute('data-device-id');
+            const selectedModel = document.getElementById('model-choice').value;
+
+            fetch(`/api/devices/${deviceId}/update_model/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: JSON.stringify({
+                    model_name: selectedModel
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('设备模型更新成功！');
+                    loadDeviceInfo(deviceId);
+                } else {
+                    alert('更新失败，请重试。');
+                }
+            });
+        }
+        
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        function searchDevices() {
+            var input = document.getElementById('search-input');
+            var filter = input.value.toLowerCase();
+            var ul = document.getElementById('device-list');
+            var li = ul.getElementsByTagName('li');
+        
+            for (var i = 0; i < li.length; i++) {
+                var device = li[i];
+                var text = device.textContent || device.innerText;
+        
+                if (text.toLowerCase().indexOf(filter) > -1) {
+                    device.style.display = '';
+                } else {
+                    device.style.display = 'none';
+                }
+            }
+        }
+        
+       // 加载待审计的图片列表（只显示有问题的图片）
+       function loadImagesForAudit() {
+            fetch('/api/processing_results/problem/')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP错误! 状态码: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(processingResults => {
+                    const imageListElement = document.getElementById('image-list');
+                    imageListElement.innerHTML = ''; // 清空现有列表
+
+                    if (processingResults.length === 0) {
+                        imageListElement.innerHTML = '<li class="image-item">暂无待审核图片</li>';
+                        return;
+                    }
+
+                    processingResults.forEach(result => {
+                        const imageElement = document.createElement('li');
+                        imageElement.className = 'image-item';
+                        imageElement.innerHTML = `
+                            <span class="image-name">${result.image.image_name}</span>
+                            <span class="image-status ${result.result === 'problem' ? 'problem' : 'approved'}"></span>
+                        `;
+                        imageElement.onclick = () => {
+                            if (result.id) {
+                                loadImageInfo(result.id);
+                            } else {
+                                console.error('Processing result ID is undefined for:', result);
+                                alert('无法加载图片信息：缺少处理结果ID');
+                            }
+                        };
+                        imageElement.setAttribute('data-result-id', result.id);
+                        imageListElement.appendChild(imageElement);
+                    });
+                })
+                .catch(error => {
+                    console.error('加载图片列表失败:', error);
+                    imageListElement.innerHTML = '<li class="image-item" style="color:red">加载图片列表失败</li>';
+                });
+        }
+        
+        function loadImageInfo(processingResultId) {
+            if (!processingResultId || processingResultId === 'undefined') {
+                console.error('Processing result ID is invalid:', processingResultId);
+                alert('处理结果ID无效');
+                return;
+            }
+            console.log('Loading image info for processing result ID:', processingResultId);
+            fetch(`/api/processing_results/${processingResultId}/`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP错误! 状态码: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(processingResult => {
+                    if (!processingResult.image || !processingResult.image.image_url) {
+                        throw new Error('图片数据不完整');
+                    }
+                    document.getElementById('selected-image').src = processingResult.image.image_url;
+                    document.getElementById('image-name').textContent = `图片名称: ${processingResult.image.image_name}`;
+                    document.getElementById('image-batch').textContent = `批次: ${processingResult.image.batch_number || '无'}`;
+                    document.getElementById('image-result').textContent = `检测结果: ${processingResult.result || '待检测'}`;
+                    document.getElementById('submit-approval').setAttribute('data-image-id', processingResultId);
+                })
+                .catch(error => {
+                    console.error('加载图片信息失败:', error);
+                    alert(`加载图片信息失败: ${error.message}`);
+                });
+        }
+        
+        function submitApproval() {
+            const processingResultId = document.getElementById('submit-approval').getAttribute('data-image-id');
+            const approvalResult = document.getElementById('approval-choice').value;
+        
+            fetch(`/api/processing_results/${processingResultId}/update_approval/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: JSON.stringify({
+                    approval_result: approvalResult
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP错误! 状态码: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    alert('审批结果提交成功！');
+                    loadImageInfo(processingResultId);
+                    loadImagesForAudit(); // 重新加载待审计列表
+                } else {
+                    alert('提交失败，请重试。');
+                }
+            })
+            .catch(error => {
+                console.error('提交审批结果失败:', error);
+                alert(`提交审批结果失败: ${error.message}`);
+            });
+        }
+
+
+        window.onload = function() {
+            try {
+                switchTab('manage');
+                loadDevices();
+                loadImagesForAudit();
+            } catch (error) {
+                console.error('页面加载出错:', error);
+                document.getElementById('manage').style.display = 'block';
+                loadDevices();
+            }
+        };
+    </script>
+</body>
+</html>
