@@ -43,6 +43,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -51,6 +52,14 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+# 静态文件配置
+STATIC_URL = '/static/'  # 静态文件 URL 前缀（默认值）
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # 静态文件收集目录（通过 collectstatic 生成）
+
+# 指定静态文件搜索路径（关键！）
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),  # 指向项目根目录下的 static 文件夹
+]
 ROOT_URLCONF = 'demo.urls'
 
 TEMPLATES = [
@@ -79,6 +88,9 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+        'OPTIONS': {
+            'timeout': 20,  # 增加超时时间
+        }
     }
 }
 
@@ -136,5 +148,5 @@ LOGIN_REDIRECT_URL = '/'  # 用户登录后的重定向地址
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-
-
+# 启用 WhiteNoise 压缩和缓存
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'

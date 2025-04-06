@@ -1,6 +1,7 @@
 import os
 
 from django.core.files import File
+from django.db import models
 from django.db.models import Count
 from django.db.models import F
 from django.utils import timezone
@@ -24,8 +25,8 @@ def get_defect_and_quality_rate(period='day'):
         period=F('timestamp__date')
     ).values('period').annotate(
         total_count=Count('id'),
-        defect_count=Count('id', filter=F('result') == 'problem'),
-        quality_count=Count('id', filter=F('result') == 'no_problem')
+        defect_count=Count('id', filter=models.Q(result='problem')),
+        quality_count=Count('id', filter=models.Q(result='no_problem'))
     )
 
     data = []
