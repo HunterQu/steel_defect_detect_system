@@ -438,24 +438,193 @@
                 <h2><i class="fas fa-database"></i> 数据集管理</h2>
                 <div class="upload-section">
                     <h3>上传新数据集</h3>
+                    <div class="upload-options">
+                        <button class="upload-option-btn active" onclick="switchUploadMode('files')">
+                            <i class="fas fa-file"></i> 文件上传
+                        </button>
+                        <button class="upload-option-btn" onclick="switchUploadMode('folder')">
+                            <i class="fas fa-folder"></i> 文件夹上传
+                        </button>
+                    </div>
+                    
                     <form id="dataset-upload-form" enctype="multipart/form-data">
-                        <input type="file" id="dataset-file" name="dataset_files" multiple>
+                        <div id="file-upload-section">
+                            <input type="file" id="dataset-file" name="dataset_files" multiple>
+                        </div>
+                        <div id="folder-upload-section" style="display:none">
+                            <div style="margin-bottom:10px;">
+                                <label for="dataset-name">数据集名称*:</label>
+                                <input type="text" id="dataset-name" name="dataset_name" placeholder="输入数据集名称">
+                            </div>
+                            <input type="file" id="dataset-folder" name="datasets" webkitdirectory directory multiple>
+                            <p style="font-size:12px;color:#666;margin-top:5px;">请使用Chrome/Firefox浏览器上传文件夹</p>
+                            <p style="font-size:12px;color:#666;">* 数据集名称是必填项</p>
+                        </div>
                         <button type="submit">上传</button>
                     </form>
                     <div id="upload-status" style="margin-top:10px;"></div>
                 </div>
+
+                <style>
+                    .upload-options {
+                        display: flex;
+                        gap: 10px;
+                        margin-bottom: 15px;
+                    }
+                    .upload-option-btn {
+                        padding: 10px 15px;
+                        background: #f0f0f0;
+                        border: none;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        transition: all 0.3s;
+                        display: flex;
+                        align-items: center;
+                        gap: 5px;
+                    }
+                    .upload-option-btn:hover {
+                        background: #e0e0e0;
+                    }
+                    .upload-option-btn.active {
+                        background: #3498db;
+                        color: white;
+                    }
+                </style>
+
+                <script>
+                    function switchUploadMode(mode) {
+                        const fileBtn = document.querySelector('.upload-option-btn:nth-child(1)');
+                        const folderBtn = document.querySelector('.upload-option-btn:nth-child(2)');
+                        const fileSection = document.getElementById('file-upload-section');
+                        const folderSection = document.getElementById('folder-upload-section');
+                        
+                        if (mode === 'files') {
+                            fileBtn.classList.add('active');
+                            folderBtn.classList.remove('active');
+                            fileSection.style.display = 'block';
+                            folderSection.style.display = 'none';
+                        } else {
+                            fileBtn.classList.remove('active');
+                            folderBtn.classList.add('active');
+                            fileSection.style.display = 'none';
+                            folderSection.style.display = 'block';
+                        }
+                    }
+
+        // 防止重复提交标志
+        let isSubmitting = false;
+        
+        document.getElementById('dataset-upload-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const submitBtn = this.querySelector('button[type="submit"]');
+            
+            if (isSubmitting) {
+                console.log('表单正在提交中，请勿重复操作');
+                return;
+            }
+            
+            const statusDiv = document.getElementById('upload-status');
+            const isFolderUpload = document.querySelector('.upload-option-btn:nth-child(2)').classList.contains('active');
+            const endpoint = isFolderUpload ? '/api/datasets/upload_folder/' : '/api/datasets/upload/';
+            
+            const fileInput = isFolderUpload ? 
+                document.getElementById('dataset-folder') : 
+                document.getElementById('dataset-file');
+                            
+                        // 验证当前活动表单
+                        if (isFolderUpload) {
+                            const datasetName = document.getElementById('dataset-name');
+                            if (!datasetName.value) {
+                                statusDiv.innerHTML = '<span style="color:red">请输入数据集名称</span>';
+                                return;
+                            }
+                        }
+                        
+                        // 移除所有隐藏字段的required属性
+                        document.querySelectorAll('input[required]').forEach(input => {
+                            if (input.offsetParent === null) {
+                                input.removeAttribute('required');
+                            }
+                        });
+                        
+                        if (fileInput.files.length === 0) {
+                            statusDiv.innerHTML = '<span style="color:red">请选择文件或文件夹</span>';
+                            return;
+                        }
+                        
+                        statusDiv.innerHTML = '<span style="color:blue">上传中...</span>';
+                        console.log('开始上传文件...'); // 添加调试日志
+                        
+                        const formData = new FormData(this);
+                        formData.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+                        // 根据模式设置不同的字段
+                        if (isFolderUpload) {
+                            formData.append('upload_mode', 'folder');
+                        } else {
+                            formData.append('upload_mode', 'file');
+                        }
+                        
+                        fetch(endpoint, {
+                            method: 'POST',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: formData
+                        })
+                        .then(response => {
+                            console.log('收到响应:', response); // 添加调试日志
+                            if (!response.ok) {
+                                return response.json().then(err => {
+                                    throw new Error(err.error || '上传失败');
+                                });
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            if (data.success) {
+                                statusDiv.innerHTML = '<span style="color:green">上传成功！</span>';
+                                // 更新数据集列表而不刷新页面
+                                loadDatasetList();
+                            } else {
+                                statusDiv.innerHTML = `<span style="color:red">上传失败: ${data.error || '未知错误'}</span>`;
+                            }
+                        })
+                        .catch(error => {
+                            statusDiv.innerHTML = `<span style="color:red">上传出错: ${error.message}</span>`;
+                            console.error('Upload error:', error);
+                        });
+                    });
+                </script>
                 <div class="dataset-list">
                     <h3>已上传数据集</h3>
+                    {% if datasets %}
                     <table>
                         <thead>
                             <tr>
                                 <th>数据集名称</th>
                                 <th>上传日期</th>
-                                <th>文件数</th>
                                 <th>操作</th>
                             </tr>
                         </thead>
+                        <tbody>
+                            {% for dataset in datasets %}
+                            <tr>
+                                <td>{{ dataset.name }}</td>
+                                <td>{{ dataset.upload_date }}</td>
+                                <td>
+                                    <button onclick="downloadDataset('{{ dataset.id }}')">下载</button>
+                                    <button onclick="deleteDataset('{{ dataset.id }}')">删除</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
                     </table>
+                    {% else %}
+                    <p style="color: #666; font-style: italic; margin-top: 15px;">
+                        <i class="fas fa-info-circle"></i> 还未上传任何数据集
+                    </p>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -541,7 +710,6 @@
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const device = await response.json();
-                
                 document.getElementById('device-name').innerHTML = `
                     <i class="fas fa-server"></i>
                     <span>设备名称: ${device.device_name}</span>
@@ -908,46 +1076,53 @@
             
             statusDiv.innerHTML = '<span style="color:blue">上传中...</span>';
             
-            const formData = new FormData();
-            for (let i = 0; i < fileInput.files.length; i++) {
-                formData.append('dataset_files', fileInput.files[i]);
-            }
+            const formData = new FormData(this); // 使用表单元素创建FormData
+            formData.append('csrfmiddlewaretoken', getCookie('csrftoken')); // 显式添加CSRF token
             
             fetch('/api/datasets/upload/', {
                 method: 'POST',
                 headers: {
-                    'X-CSRFToken': getCookie('csrftoken')
+                    'X-Requested-With': 'XMLHttpRequest' // 添加此头部有助于Django识别AJAX请求
                 },
                 body: formData
             })
-            .then(response => {
-                if (!response.ok) {
-                    return response.text().then(text => {
-                        try {
-                            return JSON.parse(text);
-                        } catch {
-                            throw new Error(text || '上传失败');
-                        }
-                    });
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    statusDiv.innerHTML = '<span style="color:green">上传成功！</span>';
-                    // 刷新数据集列表
-                    loadDatasetList();
-                } else {
-                    statusDiv.innerHTML = `<span style="color:red">上传失败: ${data.message || '未知错误'}</span>`;
-                }
-            })
-            .catch(error => {
-                statusDiv.innerHTML = `<span style="color:red">上传出错: ${error.message}</span>`;
-            });
+                        .then(response => {
+                            console.log('收到响应:', response); // 添加调试日志
+                            if (!response.ok) {
+                                return response.json().then(err => {
+                                    throw new Error(err.error || '上传失败');
+                                });
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            if (data.success) {
+                                statusDiv.innerHTML = '<span style="color:green">上传成功！</span>';
+                                loadDatasetList();
+                            } else {
+                                statusDiv.innerHTML = `<span style="color:red">上传失败: ${data.error || '未知错误'}</span>`;
+                            }
+                        })
+                        .catch(error => {
+                            statusDiv.innerHTML = `<span style="color:red">上传出错: ${error.message}</span>`;
+                            console.error('Upload error:', error);
+                        })
+                        .finally(() => {
+                            isSubmitting = false;
+                            if (submitBtn) {
+                                submitBtn.disabled = false;
+                            }
+                        });
         });
 
         // 加载数据集列表
         function loadDatasetList() {
+            const tableBody = document.querySelector('.dataset-list tbody');
+            if (!tableBody) return;
+            
+            // 清空现有列表
+            tableBody.innerHTML = '';
+            
             fetch('/api/datasets/')
                 .then(response => {
                     if (!response.ok) {
@@ -957,14 +1132,15 @@
                 })
                 .then(datasets => {
                     const tableBody = document.querySelector('.dataset-list tbody');
+                    if (!tableBody) return;
+                    
                     tableBody.innerHTML = '';
                     
                     datasets.forEach(dataset => {
                         const row = document.createElement('tr');
                         row.innerHTML = `
-                            <td>${dataset.name}</td>
-                            <td>${dataset.upload_date}</td>
-                            <td>${dataset.file_count}</td>
+                            <td>${dataset.name || '未命名数据集'}</td>
+                            <td>${new Date(dataset.upload_date).toLocaleString()}</td>
                             <td>
                                 <button onclick="downloadDataset('${dataset.id}')">下载</button>
                                 <button onclick="deleteDataset('${dataset.id}')">删除</button>
@@ -972,32 +1148,89 @@
                         `;
                         tableBody.appendChild(row);
                     });
+
+                    // 如果没有数据集，显示提示信息
+                    if (datasets.length === 0) {
+                        const emptyRow = document.createElement('tr');
+                        emptyRow.innerHTML = `
+                            <td colspan="3" style="text-align:center;color:#666;font-style:italic;">
+                                <i class="fas fa-info-circle"></i> 还未上传任何数据集
+                            </td>
+                        `;
+                        tableBody.appendChild(emptyRow);
+                    }
+                })
+                .catch(error => {
+                    console.error('加载数据集列表失败:', error);
+                    alert('加载数据集列表失败: ' + error.message);
                 });
         }
 
         // 下载数据集
         function downloadDataset(datasetId) {
-            window.location.href = `/api/datasets/${datasetId}/download/`;
+            fetch(`/api/datasets/${datasetId}/download/`, {
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw new Error(err.error || '下载失败');
+                    });
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                // 创建下载链接
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `dataset_${datasetId}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            })
+            .catch(error => {
+                console.error('下载失败:', error);
+                alert(`下载失败: ${error.message}`);
+            });
         }
 
         // 删除数据集
         function deleteDataset(datasetId) {
             if (!confirm('确定要删除这个数据集吗？')) return;
             
-            fetch(`/api/datasets/${datasetId}/`, {
+            fetch(`/api/datasets/${datasetId}/delete/`, {
                 method: 'DELETE',
                 headers: {
-                    'X-CSRFToken': getCookie('csrftoken')
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json'
                 }
             })
-            .then(response => response.json())
+            .then(response => {
+                if (response.status === 404) {
+                    throw new Error('数据集不存在或已被删除');
+                }
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw new Error(err.message || '删除失败');
+                    });
+                }
+                return response.json();
+            })
             .then(data => {
-                if (data.success) {
+                if (data && data.success) {
                     alert('删除成功');
                     loadDatasetList();
                 } else {
-                    alert('删除失败: ' + (data.message || '未知错误'));
+                    alert('删除失败: ' + (data?.message || '未知错误'));
                 }
+            })
+            .catch(error => {
+                console.error('删除数据集出错:', error);
+                alert('删除数据集时出错: ' + error.message);
             });
         }
 
@@ -1049,6 +1282,7 @@
                     console.error("加载饼图数据出错：", error);
                 });
         }
+
 
         window.onload = function() {
             try {

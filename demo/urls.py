@@ -25,5 +25,7 @@ urlpatterns = [
     path('api/datasets/', views.dataset_list, name='dataset_list'),
     path('api/datasets/upload/', views.dataset_upload, name='dataset_upload'),
     path('api/datasets/<int:dataset_id>/', views.dataset_detail, name='dataset_detail'),
+    path('api/datasets/<int:dataset_id>/delete/', views.dataset_delete, name='dataset_delete'),
     path('api/datasets/<int:dataset_id>/download/', views.dataset_download, name='dataset_download'),
+    path('api/datasets/upload_folder/', views.upload_dataset_folder, name='upload_dataset_folder'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
